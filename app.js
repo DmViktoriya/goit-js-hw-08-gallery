@@ -64,145 +64,108 @@ const galleryItems = [
   },
 ];
 // ====================================================================================================
-const refs = {
-  galleryContainerRef: document.querySelector("ul.js-gallery"),
-  modalRef: document.querySelector("div.lightbox"),
-  modalCloseBtnRef: document.querySelector("button"),
-  modalOverlayRef: document.querySelector(".lightbox__overlay"),
-  modalContentRefs: document.querySelector(".lightbox__content"),
-  bigImgRef: document.querySelector(".lightbox__image"),
-};
 
-//создаем разметку галлереи=========================================
-function createGalleryMarkup(listOfImages) {
-  const galleryMarkup = [];
-  let string;
-  listOfImages.forEach((item) => {
-    const { preview, original, description } = item;
-    const markupItem = `    
-<li class="gallery__item">
-<a
-class ="gallery__link"
-href=${original}>
-<img class="gallery__image"
-src= ${preview} data-source=${original}
-alt=${description}/>
-</a>
-</li>`;
-    galleryMarkup.push(markupItem);
-    string = galleryMarkup.join("");
-  });
 
-  return string;
+export const refs = {
+    galleryList: document.querySelector('.js-gallery'),
+    lightBox: document.querySelector('.js-lightbox'),
+    lightboxImage: document.querySelector('.lightbox__image'),
 }
 
-const galleryMarkupString = createGalleryMarkup(galleryItems);
+let activeIndex = null;
 
-refs.galleryContainerRef.insertAdjacentHTML("afterbegin", galleryMarkupString);
+//Разметка галлереи
 
-//Открытие модального окна================================================
-
-refs.galleryContainerRef.addEventListener("click", openModal);
-
-function openModal(event) {
-  event.preventDefault();
-  if (event.target.nodeName !== "IMG") {
-    return;
-  }
-  refs.modalRef.classList.add("is-open");
-
-  refs.bigImgRef.src = event.target.getAttribute("data-source");
-  refs.bigImgRef.alt = event.target.alt;
-};
-
-// закрытие модального окна========================================
-
-refs.modalCloseBtnRef.addEventListener("click", closeModal);
-
-function closeModal() {
-  refs.modalRef.classList.remove("is-open");
-  cleaner();
+function createGalleryCards(items) {
+    return items.map(({original, preview, description}) => {
+    return  `<li class="gallery__item">
+  <a
+    class="gallery__link"
+    href="${original}"
+  >
+    <img
+      class="gallery__image"
+      src="${preview}"
+      data-source="${original}"
+      alt="${description}"
+    />
+  </a>
+</li>`  
+    })
 }
 
-function cleaner() {
-  refs.bigImgRef.src = "";
-  refs.bigImgRef.alt = "";
-}
+refs.galleryList.innerHTML = createGalleryCards(galleryItems).join('');
 
-//закрытие по escape======================================================
-window.addEventListener("keydown", onEscCloseModal);
-function onEscCloseModal(event) {
-  if (event.key !== "Escape") {
-    return;
-  }
-  closeModal();
-}
-//закрытие по overlay=======================================================
+//Открытие модального окна
 
-refs.modalOverlayRef.addEventListener("click", onOverlayModalClose);
+refs.galleryList.addEventListener('click', modalOpen);
 
-function onOverlayModalClose(event) {
-  if (event.target === event.currentTarget) {
-    closeModal();
-  }
-}
-//=======================================================================
-//========================================================================
-window.addEventListener("keydown", flippingImg);
-
-
-function flippingImg(event) {
-  const currentImg = event.target.querySelector("img");
-
-  if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") {
-    return;
-  }
-  else if (event.key === "ArrowRight") {
-    flipArrowRight(currentImg) 
-  }
-  else if (event.key === "ArrowLeft") {
-    flippingArrowLeft(currentImg)
-  }
-
-};
-function flipArrowRight(curEl) {
-  srcArr.forEach((item) => {      
-    if (srcArr.indexOf(item) === srcArr.indexOf(curEl.src)) {    
-      let index = srcArr.indexOf(item);
-      index += 1;      
-      refs.bigImgRef.src = arrBigSrc[index];
+function modalOpen(e) {
+    e.preventDefault()
+    if (!e.target.classList.contains('gallery__image')) {
+        return;
     }
-  })
-};
-function flippingArrowLeft(curEl) {
-    srcArr.forEach((item) => {
-   if (srcArr.indexOf(item) === srcArr.indexOf(curEl.src)) {
-     let index = srcArr.indexOf(item);
-     index -= 1;
-     refs.bigImgRef.src = arrBigSrc[index];
-      }
-      
-  })
-};
+    refs.lightBox.classList.add('is-open');
+    refs.lightboxImage.src = e.target.dataset.source;
+    
+    createGalleryCards(galleryItems).forEach((element, ind) => {
+        if (element.includes(e.target.src)) {
+            activeIndex = ind;
+        }
+    });
+    console.log(activeIndex);
+    console.log(galleryItems[activeIndex].original);
 
-// //создает массив src little=========================
-function createArrOfSrc(listOfImages) {
-  const srcArr = [];
-  listOfImages.forEach((item) => {
-    const { preview } = item;
-    srcArr.push(preview);
-  });
-  return srcArr;
+    window.addEventListener('keydown', closeByEscape);
+    window.addEventListener('keydown', changeByArrows);
 }
-const srcArr = createArrOfSrc(galleryItems);
 
-// //big src array===========================================
-function createArrOfBigSrc(listOfImages) {
-  const srcArr = [];
-  listOfImages.forEach((item) => {
-    const { original } = item;
-    srcArr.push(original);
-  });
-  return srcArr;
+
+//Закрытие модального окна
+
+refs.lightBox.addEventListener('click', closeModal);
+
+function closeModal(e) {
+    if (e?.target.nodeName === 'IMG') {
+        return;
+    }
+    refs.lightboxImage.src = '';
+    refs.lightBox.classList.remove('is-open');
+
+    window.removeEventListener('keydown', closeByEscape);
+    window.removeEventListener('keydown', changeByArrows);
 }
-const arrBigSrc = createArrOfBigSrc(galleryItems);
+
+//Закрытие по Escape
+
+function closeByEscape(e) {
+    if (e.key !== 'Escape') {
+        return;
+    }
+    closeModal(e);
+}
+
+//Стрелки вправо, влево и по кругу
+
+function changeByArrows(e) {
+    if (e.key === 'ArrowRight' && activeIndex < galleryItems.length -1) {
+        activeIndex += 1;
+        refs.lightboxImage.src = galleryItems[activeIndex].original;
+        return;
+    }
+    if (e.key === 'ArrowLeft' && activeIndex > 0) {
+        activeIndex -= 1;
+        refs.lightboxImage.src = galleryItems[activeIndex].original;
+        return;
+    }
+    if (e.key === 'ArrowRight' && activeIndex === galleryItems.length -1) {
+        activeIndex = 0;
+        refs.lightboxImage.src = galleryItems[activeIndex].original;
+        return;
+    }
+    if (e.key === 'ArrowLeft' && activeIndex === 0) {
+        activeIndex = galleryItems.length -1;
+        refs.lightboxImage.src = galleryItems[activeIndex].original;
+        return;
+    }
+}
